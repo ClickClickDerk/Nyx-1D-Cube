@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nyx 1D Cube</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 1;
+            font-family: Arial, sans-serif;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            z-index: 1;
+            font-family: Arial, sans-serif;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">3D Galaxy Scene with Dynamic Lines and Tween.js</div>
+    <div id="controls">
+        Speed: <input type="range" id="speedControl" min="0.1" max="2" step="0.1" value="1">
+    </div>
+    <!-- Include Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include Tween.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/20.0.0/tween.umd.js"></script>
+    <script>
+        // Initialize scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Set camera initial position
+        camera.position.z = 200;
+
+        // Speed control
+        let speed = 1;
+        document.getElementById('speedControl').addEventListener('input', (event) => {
+            speed = parseFloat(event.target.value);
+        });
+
+        // Function to generate random colors using a modified formula
+        function generateRandomColor(x, y, z) {
+            const red = Math.abs(Math.sin(x * Math.PI) * 255) % 256;
+            const green = Math.abs(Math.cos(y * Math.PI) * 255) % 256;
+            const blue = Math.abs(Math.sin(z * Math.PI) * 255) % 256;
+            return rgb(${Math.floor(red)}, ${Math.floor(green)}, ${Math.floor(blue)});
+        }
+
+        // Create galaxy background
+        function createGalaxyBackground() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7 });
+
+            const starVertices = [];
+            for (let i = 0; i < 10000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starVertices.push(x, y, z);
+            }
+
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+
+        createGalaxyBackground(); // Call the function to create the galaxy background
+
+        // New formula parameters with π integration
+        const A = 5, B = 0.1, C = 0.01, D = 7, E = 0.05, F = 0.02;
+
+        // Function to create a dynamic line based on the new formula with π integration
+        function createDynamicLine(startX, startY, startZ) {
+            const points = [];
+            const lineMaterial = new THREE.LineBasicMaterial({ vertexColors: true });
+
+            // Generate points using the new formula with π integration
+            for (let t = 0; t < 100; t += 0.1) {
+                const x = Math.PI * A * Math.sin(B * t) * Math.exp(C * t);
+                const y = Math.PI * A * Math.cos(B * t) * Math.exp(C * t);
+                const z = Math.PI * D * Math.sin(E * t) * Math.exp(-F * t);
+
+                points.push(new THREE.Vector3(startX + x, startY + y, startZ + z));
+            }
+
+            // Create a geometry from the points and add colors
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const colors = [];
+            for (let i = 0; i < points.length; i++) {
+                const color = new THREE.Color(generateRandomColor(points[i].x, points[i].y, points[i].z));
+                colors.push(color.r, color.g, color.b);
+            }
+            lineGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            // Create the line and add it to the scene
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+            return line;
+        }
+
+        // Create initial dynamic lines with π integration
+        let lines = [];
+        for (let i = 0; i < 369; i++) {
+            const startX = (Math.random() - 0.5) * 50;
+            const startY = (Math.random() - 0.5) * 50;
+            const startZ = (Math.random() - 0.5) * 50;
+            lines.push(createDynamicLine(startX, startY, startZ));
+        }
+
+        // Function to create boxes
+        function createBox() {
+            const geometry = new THREE.BoxGeometry(5, 5, 5);
+            const material = new THREE.MeshStandardMaterial({ color: generateRandomColor(Math.random(), Math.random(), Math.random()) });
+            const box = new THREE.Mesh(geometry, material);
+
+            // Randomize box position
+            box.position.x = (Math.random() - 0.5) * 100;
+            box.position.y = (Math.random() - 0.5) * 100;
+            box.position.z = (Math.random() - 0.5) * 100;
+
+            scene.add(box);
+            return box;
+        }
+
+        // Create initial set of boxes
+        let boxes = [];
+        for (let i = 0; i < 5; i++) {
+            boxes.push(createBox());
+        }
+
+        // Lighting to enhance visibility
+        const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft ambient light
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(50, 50, 50);
+        scene.add(pointLight);
+
+        // Function to update line positions dynamically and simulate recycling
+        function updateLines() {
+            lines.forEach(line => {
+                const positions = line.geometry.attributes.position.array;
+                const colors = line.geometry.attributes.color.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    const x = positions[i];
+                    const y = positions[i + 1];
+                    const z = positions[i + 2];
+
+                    // Apply a recycling mechanism using π
+                    const recyclingFactor = 0.05; // Arbitrary value for recycling strength
+                    positions[i] += Math.PI * Math.sin(recyclingFactor * x);
+                    positions[i + 1] += Math.PI * Math.cos(recyclingFactor * y);
+                    positions[i + 2] += Math.PI * Math.sin(recyclingFactor * z);
+
+                    // Update colors based on new positions
+                    const color = new THREE.Color(generateRandomColor(x, y, z));
+                    colors[i] = color.r;
+                    colors[i + 1] = color.g;
+                    colors[i + 2] = color.b;
+                }
+                line.geometry.attributes.position.needsUpdate = true;
+                line.geometry.attributes.color.needsUpdate = true;
+            });
+        }
+
+        // Function to remove boxes and regenerate lines when necessary
+        function recycleBoxes() {
+            boxes.forEach(box => {
+                // Move boxes towards the center
+                box.position.x *= 0.99;
+                box.position.y *= 0.99;
+                box.position.z *= 0.99;
+
+                // If a box is close to the center, remove it
+                if (Math.abs(box.position.x) < 1 && Math.abs(box.position.y) < 1 && Math.abs(box.position.z) < 1) {
+                    scene.remove(box); // Remove from scene
+                    boxes.splice(boxes.indexOf(box), 1); // Remove from boxes array
+                }
+            });
+
+            // If only two boxes remain, regenerate lines
+            if (boxes.length <= 2 && lines.length === 0) {
+                for (let i = 0; i < 369; i++) {
+                    const startX = (Math.random() - 0.5) * 50;
+                    const startY = (Math.random() - 0.5) * 50;
+                    const startZ = (Math.random() - 0.5) * 50;
+                    lines.push(createDynamicLine(startX, startY, startZ));
+                }
+            }
+        }
+
+        // Function to move the camera dynamically using Tween.js
+        function moveCamera() {
+            new TWEEN.Tween(camera.position)
+                .to({
+                    x: Math.sin(Date.now() * 0.001 * speed) * 100,
+                    y: Math.cos(Date.now() * 0.001 * speed) * 100,
+                    z: camera.position.z - 0.1 * speed
+                }, 1000)
+                .easing(TWEEN.Easing.Quadratic.InOut)
+                .start();
+
+            camera.lookAt(scene.position); // Keep looking at the center
+        }
+
+        // Infinite loop to animate scene
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update camera position
+            moveCamera();
+
+            // Update line positions
+            updateLines();
+
+            // Handle box recycling
+            recycleBoxes();
+
+            // Rotate the scene to enhance the dynamic effect
+            scene.rotation.x += 0.001 * speed;
+            scene.rotation.y += 0.002 * speed;
+
+            // Render the scene
+            renderer.render(scene, camera);
+
+            // Update Tween.js animations
+            TWEEN.update();
+        }
+
+        animate();
+
+        // Adjust the scene on window resize
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+
+    </script>
+</body>
+</html>
